@@ -28,38 +28,53 @@ def get_reviews_sheet():
         ws.append_row(["id", "ulubione", "widzialem", "komentarz", "data_oceny", "tytul"])
         return ws
 
+def parse_bool(val):
+    """Bezpieczne parsowanie bool z Google Sheets (unika bledu z pustym stringiem)"""
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, str):
+        return val.upper() in ('TRUE', '1', 'TAK', 'YES')
+    return bool(val)
+
 @st.cache_data(ttl=60)
 def load_reviews():
+    """Wczytuje oceny jako slownik {id: {ulubione, widzialem, komentarz}}"""
     try:
         ws = get_reviews_sheet()
         records = ws.get_all_records()
-        return {str(r['id']): r for r in records}
+        return {
+            str(r['id']): {
+                'ulubione':  parse_bool(r.get('ulubione', False)),
+                'widzialem': parse_bool(r.get('widzialem', False)),
+                'komentarz': str(r.get('komentarz', '')),
+            }
+            for r in records if r.get('id')
+        }
     except Exception:
         return {}
 
-def save_all_reviews(edited_df):
-    """Zapisuje wszystkie zmodyfikowane wiersze do arkusza"""
+def save_single_review(offer_id, title, ulubione, widzialem, komentarz):
+    """Zapisuje lub aktualizuje JEDEN wiersz w arkuszu"""
     try:
         ws = get_reviews_sheet()
         records = ws.get_all_records()
-        existing_ids = {str(r['id']): i + 2 for i, r in enumerate(records)}
-
-        for _, row in edited_df.iterrows():
-            offer_id = str(row['id'])
-            data = [
-                offer_id,
-                bool(row.get('\u2764\ufe0f', False)),
-                bool(row.get('\U0001f441\ufe0f', False)),
-                str(row.get('\U0001f4ac Komentarz', '')),
-                datetime.now().strftime("%Y-%m-%d %H:%M"),
-                str(row.get('title', ''))
-            ]
-            if offer_id in existing_ids:
-                row_num = existing_ids[offer_id]
-                ws.update(f'A{row_num}:F{row_num}', [data])
-            else:
-                ws.append_row(data)
-
+        for i, row in enumerate(records, start=2):
+            if str(row['id']) == str(offer_id):
+                ws.update(f'A{i}:F{i}', [[
+                    str(offer_id),
+                    ulubione,
+                    widzialem,
+                    komentarz,
+                    datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    str(title)
+                ]])
+                load_reviews.clear()
+                return True
+        # Nowy wpis
+        ws.append_row([
+            str(offer_id), ulubione, widzialem,
+            komentarz, datetime.now().strftime("%Y-%m-%d %H:%M"), str(title)
+        ])
         load_reviews.clear()
         return True
     except Exception as e:
@@ -67,14 +82,10 @@ def save_all_reviews(edited_df):
         return False
 
 def enrich_with_reviews(df):
-    """Dodaje kolumny ocen do dataframe"""
+    """Dodaje kolumny ocen do dataframe na podstawie zapisanych danych"""
     reviews = load_reviews()
-
-    def get_val(offer_id, key, default):
-        return reviews.get(str(offer_id), {}).get(key, default)
-
     df = df.copy()
-    df['\u2764\ufe0f']           = df['id'].apply(lambda x: bool(get_val(x, 'ulubione', False)))
-    df['\U0001f441\ufe0f']          = df['id'].apply(lambda x: bool(get_val(x, 'widzialem', False)))
-    df['\U0001f4ac Komentarz'] = df['id'].apply(lambda x: str(get_val(x, 'komentarz', '')))
+    df['❤️']            = df['id'].apply(lambda x: reviews.get(str(x), {}).get('ulubione', False))
+    df['👁️']           = df['id'].apply(lambda x: reviews.get(str(x), {}).get('widzialem', False))
+    df['💬 Komentarz']  = df['id'].apply(lambda x: reviews.get(str(x), {}).get('komentarz', ''))
     return df
