@@ -29,7 +29,7 @@ event = st.plotly_chart(fig, on_select="rerun")
 # 3. Szczegóły kliknięcia - wersja "pancerna"
 if event:
     # Wyświetlmy co w ogóle przychodzi w evencie, żeby nie było błędu KeyError
-    # st.write(event) # Odkomentuj to w razie problemów, żeby zobaczyć strukturę
+     st.write(event) # Odkomentuj to w razie problemów, żeby zobaczyć strukturę
     
     # Bezpieczne wyciąganie danych
     sel = event.get("selection", {})
