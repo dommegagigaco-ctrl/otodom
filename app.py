@@ -26,13 +26,20 @@ st.subheader("Wykres interaktywny")
 fig = px.scatter(df, x='areaSqm', y=psqm_col, color='title', hover_data=['title', price_col])
 event = st.plotly_chart(fig, on_select="rerun")
 
-# 3. Szczegóły kliknięcia (tylko jeśli coś wybrano)
-if event and "selection" in event and event["selection"]["points"]:
-    # Pobieramy index punktu z wykresu
-    idx = event["selection"]["points"][0]["pointIndex"]
-    selected_row = df.iloc[idx]
+# 3. Szczegóły kliknięcia - wersja "pancerna"
+if event:
+    # Wyświetlmy co w ogóle przychodzi w evencie, żeby nie było błędu KeyError
+    # st.write(event) # Odkomentuj to w razie problemów, żeby zobaczyć strukturę
     
-    st.divider()
-    st.success(f"Wybrano: {selected_row['title']}")
-    st.write(f"Cena: {selected_row[price_col]:,} PLN | Za m²: {selected_row[psqm_col]}")
-    st.link_button("👉 Przejdź do oferty", selected_row['url'])
+    # Bezpieczne wyciąganie danych
+    sel = event.get("selection", {})
+    points = sel.get("points", [])
+    
+    if len(points) > 0:
+        idx = points[0].get("pointIndex")
+        if idx is not None:
+            selected_row = df.iloc[idx]
+            st.divider()
+            st.success(f"Wybrano: {selected_row['title']}")
+            st.write(f"Cena: {selected_row[price_col]:,} PLN")
+            st.link_button("👉 Przejdź do oferty", selected_row['url'])
