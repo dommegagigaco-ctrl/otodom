@@ -8,15 +8,13 @@ SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
-
 SHEET_ID = "13skyeoJL9MZvM5iCRtHUI7tyfu9BHArse154eizQ_L8"
 REVIEW_TAB = "oceny"
 
 @st.cache_resource
 def get_gspread_client():
     creds = Credentials.from_service_account_info(
-        st.secrets["gcp_service_account"],
-        scopes=SCOPES
+        st.secrets["gcp_service_account"], scopes=SCOPES
     )
     return gspread.authorize(creds)
 
@@ -24,16 +22,14 @@ def get_reviews_sheet():
     client = get_gspread_client()
     spreadsheet = client.open_by_key(SHEET_ID)
     try:
-        worksheet = spreadsheet.worksheet(REVIEW_TAB)
+        return spreadsheet.worksheet(REVIEW_TAB)
     except gspread.exceptions.WorksheetNotFound:
-        # Tworzymy zakladke jesli nie istnieje
-        worksheet = spreadsheet.add_worksheet(title=REVIEW_TAB, rows=1000, cols=6)
-        worksheet.append_row(["id", "ulubione", "widzialem", "komentarz", "data_oceny", "tytul"])
-    return worksheet
+        ws = spreadsheet.add_worksheet(title=REVIEW_TAB, rows=1000, cols=6)
+        ws.append_row(["id", "ulubione", "widzialem", "komentarz", "data_oceny", "tytul"])
+        return ws
 
 @st.cache_data(ttl=60)
 def load_reviews():
-    """Wczytuje wszystkie oceny z arkusza jako slownik {id: {...}}"""
     try:
         ws = get_reviews_sheet()
         records = ws.get_all_records()
@@ -41,61 +37,44 @@ def load_reviews():
     except Exception:
         return {}
 
-def save_review(offer_id, title, ulubione, widzialem, komentarz):
-    """Zapisuje lub aktualizuje ocene w arkuszu"""
+def save_all_reviews(edited_df):
+    """Zapisuje wszystkie zmodyfikowane wiersze do arkusza"""
     try:
         ws = get_reviews_sheet()
         records = ws.get_all_records()
-        # Szukamy czy juz istnieje wiersz z tym id
-        for i, row in enumerate(records, start=2):  # start=2 bo wiersz 1 to naglowki
-            if str(row['id']) == str(offer_id):
-                ws.update(f'A{i}:F{i}', [[
-                    offer_id, ulubione, widzialem,
-                    komentarz, datetime.now().strftime("%Y-%m-%d %H:%M"), title
-                ]])
-                load_reviews.clear()
-                return True
-        # Nie ma jeszcze - dodajemy nowy wiersz
-        ws.append_row([
-            offer_id, ulubione, widzialem,
-            komentarz, datetime.now().strftime("%Y-%m-%d %H:%M"), title
-        ])
+        existing_ids = {str(r['id']): i + 2 for i, r in enumerate(records)}
+
+        for _, row in edited_df.iterrows():
+            offer_id = str(row['id'])
+            data = [
+                offer_id,
+                bool(row.get('\u2764\ufe0f', False)),
+                bool(row.get('\U0001f441\ufe0f', False)),
+                str(row.get('\U0001f4ac Komentarz', '')),
+                datetime.now().strftime("%Y-%m-%d %H:%M"),
+                str(row.get('title', ''))
+            ]
+            if offer_id in existing_ids:
+                row_num = existing_ids[offer_id]
+                ws.update(f'A{row_num}:F{row_num}', [data])
+            else:
+                ws.append_row(data)
+
         load_reviews.clear()
         return True
     except Exception as e:
-        st.error(f"Blad zapisu: {e}")
+        st.error(f"Błąd zapisu: {e}")
         return False
 
-def render_review_panel(df_f):
-    """Renderuje panel ocen pod tabela"""
-    st.subheader("⭐ Oceny i komentarze")
-
+def enrich_with_reviews(df):
+    """Dodaje kolumny ocen do dataframe"""
     reviews = load_reviews()
 
-    # Wybor oferty do ocenienia
-    offer_options = df_f[['id', 'title']].dropna()
-    offer_options['label'] = offer_options['title'].str[:60] + " [" + offer_options['id'].astype(str) + "]"
-    selected_label = st.selectbox("Wybierz oferte do ocenienia:", offer_options['label'].tolist(), key="review_select")
+    def get_val(offer_id, key, default):
+        return reviews.get(str(offer_id), {}).get(key, default)
 
-    if selected_label:
-        selected_id = str(offer_options[offer_options['label'] == selected_label]['id'].values[0])
-        selected_title = offer_options[offer_options['label'] == selected_label]['title'].values[0]
-
-        existing = reviews.get(selected_id, {})
-
-        col1, col2 = st.columns(2)
-        with col1:
-            ulubione = st.checkbox("❤️ Ulubione", value=bool(existing.get('ulubione', False)), key=f"fav_{selected_id}")
-            widzialem = st.checkbox("👁️ Widziałem", value=bool(existing.get('widzialem', False)), key=f"seen_{selected_id}")
-        with col2:
-            komentarz = st.text_area("💬 Komentarz:", value=existing.get('komentarz', ''), key=f"comment_{selected_id}", height=100)
-
-        if st.button("💾 Zapisz ocenę", key=f"save_{selected_id}"):
-            if save_review(selected_id, selected_title, ulubione, widzialem, komentarz):
-                st.success("✅ Zapisano!")
-
-    # Tabela zapisanych ocen
-    if reviews:
-        st.subheader("📋 Wszystkie oceny")
-        df_reviews = pd.DataFrame(reviews.values())
-        st.dataframe(df_reviews, use_container_width=True, hide_index=True)
+    df = df.copy()
+    df['\u2764\ufe0f']           = df['id'].apply(lambda x: bool(get_val(x, 'ulubione', False)))
+    df['\U0001f441\ufe0f']          = df['id'].apply(lambda x: bool(get_val(x, 'widzialem', False)))
+    df['\U0001f4ac Komentarz'] = df['id'].apply(lambda x: str(get_val(x, 'komentarz', '')))
+    return df
