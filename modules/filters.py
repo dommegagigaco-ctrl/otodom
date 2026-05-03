@@ -19,8 +19,7 @@ def sidebar_location_filter(df):
         if city != "Wszystkie":
             df = df[df[city_col] == city]
 
-    # 3. Dzielnica (Poziom 1 z reverseGeocoding)
-    # Zazwyczaj locations/0/name to dzielnica
+    # 3. Dzielnica
     dist_col = 'locationDetails/reverseGeocoding/locations/0/name'
     if dist_col in df.columns:
         dists = ["Wszystkie"] + sorted(df[dist_col].dropna().unique().tolist())
@@ -35,5 +34,13 @@ def sidebar_location_filter(df):
         street = st.sidebar.selectbox("Ulica", options=streets)
         if street != "Wszystkie":
             df = df[df[street_col] == street]
+            
+    # 5. NOWY POZIOM: reverseGeocoding/locations/3/name
+    lvl3_col = 'development/location/reverseGeocoding/locations/3/name'
+    if lvl3_col in df.columns:
+        lvl3_list = ["Wszystkie"] + sorted(df[lvl3_col].dropna().unique().tolist())
+        lvl3 = st.sidebar.selectbox("Szczegółowa Lokalizacja (Lvl 3)", options=lvl3_list)
+        if lvl3 != "Wszystkie":
+            df = df[df[lvl3_col] == lvl3]
             
     return df
