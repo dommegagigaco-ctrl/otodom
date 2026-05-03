@@ -1,7 +1,6 @@
 import streamlit as st
 
 def sidebar_location_filter(df):
-    # Odczytujemy zapisane parametry z URL
     params = st.query_params
 
     st.sidebar.subheader("💰 Zakresy")
@@ -11,6 +10,8 @@ def sidebar_location_filter(df):
     max_price = int(df['price'].max())
     saved_price_min = int(params.get("price_min", min_price))
     saved_price_max = int(params.get("price_max", max_price))
+    saved_price_min = max(min_price, min(saved_price_min, max_price))
+    saved_price_max = max(min_price, min(saved_price_max, max_price))
     price_range = st.sidebar.slider(
         "Zakres cen (PLN):", min_price, max_price,
         (saved_price_min, saved_price_max), key="price_range"
@@ -24,6 +25,8 @@ def sidebar_location_filter(df):
     max_sqm = float(df['areaSqm'].max())
     saved_sqm_min = float(params.get("sqm_min", min_sqm))
     saved_sqm_max = float(params.get("sqm_max", max_sqm))
+    saved_sqm_min = max(min_sqm, min(saved_sqm_min, max_sqm))
+    saved_sqm_max = max(min_sqm, min(saved_sqm_max, max_sqm))
     area_range = st.sidebar.slider(
         "Metraż (m²):", min_sqm, max_sqm,
         (saved_sqm_min, saved_sqm_max), key="area_range"
@@ -31,6 +34,26 @@ def sidebar_location_filter(df):
     st.query_params["sqm_min"] = area_range[0]
     st.query_params["sqm_max"] = area_range[1]
     df = df[(df['areaSqm'] >= area_range[0]) & (df['areaSqm'] <= area_range[1])]
+
+    # --- CENA ZA M² ---
+    psqm_col = 'listingDetails/pricePerSquareMeter/value'
+    if psqm_col in df.columns:
+        df[psqm_col] = pd.to_numeric(df[psqm_col], errors='coerce')
+        df_psqm = df[psqm_col].dropna()
+        if not df_psqm.empty:
+            min_psqm = int(df_psqm.min())
+            max_psqm = int(df_psqm.max())
+            saved_psqm_min = int(params.get("psqm_min", min_psqm))
+            saved_psqm_max = int(params.get("psqm_max", max_psqm))
+            saved_psqm_min = max(min_psqm, min(saved_psqm_min, max_psqm))
+            saved_psqm_max = max(min_psqm, min(saved_psqm_max, max_psqm))
+            psqm_range = st.sidebar.slider(
+                "Cena za m² (PLN):", min_psqm, max_psqm,
+                (saved_psqm_min, saved_psqm_max), key="psqm_range"
+            )
+            st.query_params["psqm_min"] = psqm_range[0]
+            st.query_params["psqm_max"] = psqm_range[1]
+            df = df[(df[psqm_col] >= psqm_range[0]) & (df[psqm_col] <= psqm_range[1])]
 
     st.sidebar.subheader("📍 Precyzyjna lokalizacja")
 
