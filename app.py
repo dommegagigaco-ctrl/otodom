@@ -5,6 +5,7 @@ import plotly.express as px
 st.set_page_config(layout="wide")
 st.title("🏠 Otodom: Łowca Okazji")
 
+# Wczytanie
 url = "https://docs.google.com/spreadsheets/d/13skyeoJL9MZvM5iCRtHUI7tyfu9BHArse154eizQ_L8/export?format=csv&gid=0"
 df = pd.read_csv(url)
 df['url'] = df['url'].str.replace('/ad/', '/oferta/')
@@ -12,26 +13,26 @@ df['url'] = df['url'].str.replace('/ad/', '/oferta/')
 psqm_col = 'listingDetails/pricePerSquareMeter/value'
 price_col = 'price'
 
-# 1. Wykres z obsługą kliknięcia
-st.subheader("Rynek: Cena za m² w zależności od metrażu")
-fig = px.scatter(df, x='areaSqm', y=psqm_col, color='title', hover_data=['title', price_col])
+# 1. Tabela (zawsze widoczna na górze)
+st.subheader("🎯 Okazje rynkowe")
+st.dataframe(
+    df[['title', price_col, psqm_col, 'url']],
+    column_config={"url": st.column_config.LinkColumn("Link", display_text="Otwórz")},
+    use_container_width=True
+)
 
-# Dodajemy obsługę kliknięcia
+# 2. Wykres z obsługą kliknięcia
+st.subheader("Wykres interaktywny")
+fig = px.scatter(df, x='areaSqm', y=psqm_col, color='title', hover_data=['title', price_col])
 event = st.plotly_chart(fig, on_select="rerun")
 
-# 2. Jeśli użytkownik kliknął kropkę...
+# 3. Szczegóły kliknięcia (tylko jeśli coś wybrano)
 if event and "selection" in event and event["selection"]["points"]:
-    clicked_point = event["selection"]["points"][0]
+    # Pobieramy index punktu z wykresu
+    idx = event["selection"]["points"][0]["pointIndex"]
+    selected_row = df.iloc[idx]
     
-    # Próbujemy pobrać indeks, ale jeśli go nie ma, użyjemy innej metody
-    selected_index = clicked_point.get("pointIndex")
-    
-    if selected_index is not None:
-        selected_row = df.iloc[selected_index]
-        st.divider()
-        st.subheader(f"Szczegóły wybranej oferty:")
-        st.write(f"### {selected_row['title']}")
-        st.write(f"Cena: {selected_row[price_col]:,} PLN")
-        st.link_button("Otwórz ofertę w nowym oknie", selected_row['url'])
-else:
-    st.info("Kliknij w kropkę na wykresie, aby zobaczyć szczegóły oferty.")
+    st.divider()
+    st.success(f"Wybrano: {selected_row['title']}")
+    st.write(f"Cena: {selected_row[price_col]:,} PLN | Za m²: {selected_row[psqm_col]}")
+    st.link_button("👉 Przejdź do oferty", selected_row['url'])
