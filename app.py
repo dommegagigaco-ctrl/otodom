@@ -9,26 +9,21 @@ st.title("🏠 Otodom: Łowca Okazji")
 url = "https://docs.google.com/spreadsheets/d/13skyeoJL9MZvM5iCRtHUI7tyfu9BHArse154eizQ_L8/export?format=csv&gid=0"
 df = pd.read_csv(url)
 
-# 2. CZYSZCZENIE DANYCH (KLUCZOWE)
-# Ujednolicenie linków, aby duplikaty były traktowane tak samo
+# 2. Czyszczenie (normalizacja linków i usuwanie duplikatów)
 df['url'] = df['url'].str.replace('/hpr/pl/', '/pl/')
 df['url'] = df['url'].str.replace('/ad/', '/oferta/')
-
-# Usuwamy duplikaty po ID
 if 'id' in df.columns:
     df = df.drop_duplicates(subset=['id'], keep='last')
-
-# Usuwamy wiersze, które nie mają daty lub są "śmieciami"
 df = df.dropna(subset=['dateCreated', 'url'])
 
-# 3. Przetwarzanie dat
+# 3. Daty
 df['dateCreated'] = pd.to_datetime(df['dateCreated'], errors='coerce')
 df['dni_na_rynku'] = (pd.Timestamp.now() - df['dateCreated']).dt.days
 
-# 4. Filtrowanie (przez moduł zewnętrzny)
+# 4. Filtry
 df_f = sidebar_location_filter(df)
 
-# 5. Definicja kolumn (kolejność w tabeli)
+# 5. Tabela
 cols = {
     'url': 'Link',
     'title': 'Tytuł oferty',
@@ -42,8 +37,7 @@ cols = {
     'listingDetails/development/investmentState': 'Stan inw.'
 }
 
-# 6. Wyświetlanie
-st.subheader(f"🎯 Znaleziono unikalnych ofert: {len(df_f)}")
+st.subheader(f"🎯 Znaleziono ofert: {len(df_f)}")
 st.dataframe(
     df_f[list(cols.keys())],
     column_config={
@@ -52,5 +46,6 @@ st.dataframe(
         "listingDetails/pricePerSquareMeter/value": st.column_config.NumberColumn("Cena/m²", format="%d"),
         "dni_na_rynku": st.column_config.NumberColumn("Dni", format="%d")
     },
-    use_container_width=True
+    use_container_width=True,
+    hide_index=True 
 )
