@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 
 def sidebar_location_filter(df):
     params = st.query_params
