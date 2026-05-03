@@ -9,7 +9,7 @@ st.title("🏠 Otodom: Łowca Okazji")
 url = "https://docs.google.com/spreadsheets/d/13skyeoJL9MZvM5iCRtHUI7tyfu9BHArse154eizQ_L8/export?format=csv&gid=0"
 df = pd.read_csv(url)
 
-# 2. Czyszczenie (normalizacja linków i usuwanie duplikatów)
+# 2. Czyszczenie
 df['url'] = df['url'].str.replace('/hpr/pl/', '/pl/')
 df['url'] = df['url'].str.replace('/ad/', '/oferta/')
 if 'id' in df.columns:
@@ -29,6 +29,7 @@ cols = {
     'title': 'Tytuł oferty',
     'price': 'Cena',
     'listingDetails/pricePerSquareMeter/value': 'Cena/m²',
+    'areaSqm': 'Metraż (m²)',
     'dni_na_rynku': 'Dni',
     'floor': 'Piętro',
     'listingDetails/location/address/street/name': 'Ulica',
@@ -42,10 +43,11 @@ st.dataframe(
     df_f[list(cols.keys())],
     column_config={
         "url": st.column_config.LinkColumn("Link", display_text="Otwórz"),
-        "price": st.column_config.NumberColumn("Cena", format="%d"),
-        "listingDetails/pricePerSquareMeter/value": st.column_config.NumberColumn("Cena/m²", format="%d"),
+        "price": st.column_config.NumberColumn("Cena", format="%d PLN"),
+        "listingDetails/pricePerSquareMeter/value": st.column_config.NumberColumn("Cena/m²", format="%d PLN"),
+        "areaSqm": st.column_config.NumberColumn("Metraż (m²)", format="%.1f m²"),
         "dni_na_rynku": st.column_config.NumberColumn("Dni", format="%d")
     },
     use_container_width=True,
-    hide_index=True 
+    hide_index=True
 )
