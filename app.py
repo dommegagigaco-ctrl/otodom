@@ -17,23 +17,26 @@ df['dni_na_rynku'] = (pd.Timestamp.now() - df['dateCreated']).dt.days
 
 df_f = sidebar_location_filter(df)
 
+# Mapowanie nazw pól na krótsze nagłówki
+dev_title = 'listingDetails/development/title'
+dev_state = 'listingDetails/development/investmentState'
 psqm_col = 'listingDetails/pricePerSquareMeter/value'
-# Dodana kolumna do wyświetlania
 lvl3_col = 'development/location/reverseGeocoding/locations/3/name'
 
 st.subheader(f"🎯 Znaleziono ofert: {len(df_f)}")
 
-# Wybieramy kolumny do tabeli, dodając nową
-cols_to_show = ['title', 'price', psqm_col, 'dni_na_rynku', lvl3_col, 'url']
-# Filtrujemy tylko te kolumny, które naprawdę istnieją w danych
-cols_to_show = [c for c in cols_to_show if c in df_f.columns]
-
+# Wyświetlanie tabeli z konfiguracją szerokości i nazw
 st.dataframe(
-    df_f[cols_to_show].sort_values('dni_na_rynku'),
+    df_f[['title', 'price', psqm_col, 'dni_na_rynku', dev_title, dev_state, lvl3_col, 'url']],
     column_config={
-        "url": st.column_config.LinkColumn("Link", display_text="Otwórz"),
-        "price": st.column_config.NumberColumn("Cena", format="%d PLN"),
-        psqm_col: st.column_config.NumberColumn("Cena za m²", format="%d PLN")
+        "title": st.column_config.TextColumn("Tytuł\noferty", width="medium"),
+        "price": st.column_config.NumberColumn("Cena\n(PLN)", format="%d"),
+        psqm_col: st.column_config.NumberColumn("Cena\nza m²", format="%d"),
+        "dni_na_rynku": st.column_config.NumberColumn("Dni na\nrynku", width="small"),
+        dev_title: st.column_config.TextColumn("Deweloper\n/Nazwa", width="medium"),
+        dev_state: st.column_config.TextColumn("Stan\ninwestycji", width="small"),
+        lvl3_col: st.column_config.TextColumn("Lokalizacja\n(Lvl 3)", width="small"),
+        "url": st.column_config.LinkColumn("Link", display_text="Otwórz", width="small")
     },
     use_container_width=True
 )
