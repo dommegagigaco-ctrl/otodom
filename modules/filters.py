@@ -7,27 +7,32 @@ def sidebar_location_filter(df):
     st.sidebar.subheader("💰 Zakresy")
 
     # --- CENA ---
+    df['price'] = pd.to_numeric(df['price'], errors='coerce')
+    df = df.dropna(subset=['price'])
     min_price = int(df['price'].min())
     max_price = int(df['price'].max())
     saved_price_min = int(params.get("price_min", min_price))
     saved_price_max = int(params.get("price_max", max_price))
+    # Klampuj tylko do rzeczywistego zakresu danych
     saved_price_min = max(min_price, min(saved_price_min, max_price))
-    saved_price_max = max(min_price, min(saved_price_max, max_price))
+    saved_price_max = max(saved_price_min, min(saved_price_max, max_price))
     price_range = st.sidebar.slider(
         "Zakres cen (PLN):", min_price, max_price,
-        (saved_price_min, saved_price_max), key="price_range"
+        (saved_price_min, saved_price_max), step=1000, key="price_range"
     )
     st.query_params["price_min"] = price_range[0]
     st.query_params["price_max"] = price_range[1]
     df = df[(df['price'] >= price_range[0]) & (df['price'] <= price_range[1])]
 
     # --- METRAŻ ---
+    df['areaSqm'] = pd.to_numeric(df['areaSqm'], errors='coerce')
+    df = df.dropna(subset=['areaSqm'])
     min_sqm = float(df['areaSqm'].min())
     max_sqm = float(df['areaSqm'].max())
     saved_sqm_min = float(params.get("sqm_min", min_sqm))
     saved_sqm_max = float(params.get("sqm_max", max_sqm))
     saved_sqm_min = max(min_sqm, min(saved_sqm_min, max_sqm))
-    saved_sqm_max = max(min_sqm, min(saved_sqm_max, max_sqm))
+    saved_sqm_max = max(saved_sqm_min, min(saved_sqm_max, max_sqm))
     area_range = st.sidebar.slider(
         "Metraż (m²):", min_sqm, max_sqm,
         (saved_sqm_min, saved_sqm_max), key="area_range"
@@ -47,7 +52,7 @@ def sidebar_location_filter(df):
             saved_psqm_min = int(params.get("psqm_min", min_psqm))
             saved_psqm_max = int(params.get("psqm_max", max_psqm))
             saved_psqm_min = max(min_psqm, min(saved_psqm_min, max_psqm))
-            saved_psqm_max = max(min_psqm, min(saved_psqm_max, max_psqm))
+            saved_psqm_max = max(saved_psqm_min, min(saved_psqm_max, max_psqm))
             psqm_range = st.sidebar.slider(
                 "Cena za m² (PLN):", min_psqm, max_psqm,
                 (saved_psqm_min, saved_psqm_max), key="psqm_range"
