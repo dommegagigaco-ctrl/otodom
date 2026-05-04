@@ -5,7 +5,7 @@ from modules.filters import sidebar_location_filter
 from modules.reviews import enrich_with_reviews, save_single_review
 
 st.set_page_config(layout="wide")
-st.title("🏠 Otodom: Łowca Okazji – Magda i Wiktor")
+st.title("🏠 Otodom: Łowca Okazji – Warszawa")
 
 # 1. Wczytanie
 url = "https://docs.google.com/spreadsheets/d/13skyeoJL9MZvM5iCRtHUI7tyfu9BHArse154eizQ_L8/export?format=csv&gid=0"
